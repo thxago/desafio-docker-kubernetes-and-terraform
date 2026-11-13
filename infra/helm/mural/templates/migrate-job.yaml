@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mural.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "mural.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "mural.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: {{ printf "%s:%s" .Values.postgres.image.repository .Values.postgres.image.tag | quote }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+            {{- include "mural.databaseEnv" . | nindent 12 }}
+            - name: LC_ALL
+              value: C
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              until pg_isready; do sleep 2; done
+              set --
+              for migration in /migrations/*.sql; do
+                if [ ! -f "$migration" ]; then
+                  echo "No SQL migrations found" >&2
+                  exit 1
+                fi
+                echo "Applying ${migration##*/}"
+                set -- "$@" --file="$migration"
+              done
+              psql --no-password --single-transaction --set=ON_ERROR_STOP=1 "$@" \
+                --command="CREATE TABLE IF NOT EXISTS mural_infra_migrations (release_name text PRIMARY KEY, revision bigint NOT NULL); INSERT INTO mural_infra_migrations (release_name, revision) VALUES ('{{ .Release.Name }}', {{ .Release.Revision }}) ON CONFLICT (release_name) DO UPDATE SET revision = EXCLUDED.revision;"
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: {{ include "mural.fullname" . }}-migrations-{{ .Release.Revision }}

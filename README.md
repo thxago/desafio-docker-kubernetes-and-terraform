@@ -5,7 +5,8 @@
 O Compose de desenvolvimento usa imagens oficiais e esta documentado em
 [`infra/compose.md`](infra/compose.md), incluindo a geracao de um `.env` local
 ignorado pelo Git. O codigo em `app/api/` e `app/web/` foi preservado.
-As etapas Helm e Terraform do enunciado abaixo ainda nao foram implementadas.
+O chart Helm esta em `infra/helm/mural/`, com instrucoes em
+[`infra/helm.md`](infra/helm.md). A etapa Terraform ainda nao foi implementada.
 
 ### Construir as imagens
 
@@ -19,8 +20,7 @@ docker build -f app\docker\web.Dockerfile -t mural-web:local .
 O contexto dos dois builds e a raiz (`.`). Os arquivos `.dockerignore` especificos
 de cada Dockerfile limitam o contexto aos arquivos da respectiva aplicacao,
 excluindo `.env`, `.git` e a infraestrutura. As tags `mural-api:local` e
-`mural-web:local` podem ser reutilizadas no carregamento de imagens do futuro
-cluster kind.
+`mural-web:local` sao reutilizadas no carregamento de imagens do cluster kind.
 
 A API usa multi-stage: compila com `CGO_ENABLED=0`, `-trimpath` e `-ldflags="-s -w"`
 e executa em `scratch` como usuario `65532:65532`. A imagem final contem somente
@@ -86,6 +86,24 @@ docker image ls mural-api:local
 docker image ls mural-web:local
 docker image inspect golang:1.23-alpine mural-api:local mural-web:local --format '{{.RepoTags}} {{.Size}}'
 ```
+
+---
+
+### Executar no Kubernetes com Helm
+
+Siga [`infra/helm.md`](infra/helm.md) para criar um kind de desenvolvimento,
+carregar as imagens, instalar Traefik e implantar o chart no namespace `mural`.
+O acesso padrao e **http://mural.localtest.me**.
+
+O chart inclui Deployments da API/front, Services, Ingress, Postgres em
+StatefulSet com PVC, ConfigMaps, Secret e Job de migracao. As migrations rodam
+em uma transacao e registram sua conclusao por revisao da release; um
+initContainer impede que os novos pods da API iniciem antes dessa conclusao.
+O Job e um recurso normal, nao um hook pos-instalacao, evitando deadlock
+com `helm --wait`. Probes HTTP distinguem `/healthz` de `/readyz`.
+
+Credenciais reais sao fornecidas por um arquivo privado ignorado pelo Git
+ou por um Secret existente, nunca pelo `values.yaml` versionado.
 
 ---
 

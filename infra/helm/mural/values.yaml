@@ -1,0 +1,76 @@
+nameOverride: ""
+fullnameOverride: ""
+
+api:
+  replicas: 2
+  image:
+    repository: mural-api
+    tag: local
+    pullPolicy: IfNotPresent
+  port: 8080
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+web:
+  replicas: 2
+  image:
+    repository: mural-web
+    tag: local
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+postgres:
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  username: mural
+  database: mural
+  password: ""
+  # Alternative to password: existing Secret with password and database-url keys.
+  existingSecret: ""
+  persistence:
+    size: 1Gi
+    # Empty uses the cluster's default StorageClass.
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+migrations:
+  activeDeadlineSeconds: 600
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+ingress:
+  enabled: true
+  className: traefik
+  host: mural.localtest.me
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
