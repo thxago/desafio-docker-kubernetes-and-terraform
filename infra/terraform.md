@@ -134,6 +134,11 @@ Se um apply falhar, corrija a causa e repita-o com o mesmo state, ou use
 As migrations e suas falhas/recuperacao seguem o comportamento descrito em
 `infra/helm.md`.
 
+Para validar integracao, persistencia, probes e idempotencia com verificacoes
+reproduziveis, siga [`validacao.md`](validacao.md). Se o encaminhamento local
+na porta 80 falhar mesmo com o NodePort interno saudavel, o roteiro permite
+usar 18080/18443 no arquivo privado antes de iniciar um novo ciclo.
+
 ## Evidencia do ciclo
 
 Em 2026-11-13, com Terraform 1.13.5, Docker 28.4.0 e cluster isolado

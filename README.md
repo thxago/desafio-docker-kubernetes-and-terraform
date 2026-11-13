@@ -127,6 +127,20 @@ O destroy remove o cluster e as imagens exclusivas desta instalacao, preservando
 caches e imagens oficiais compartilhados. State e kubeconfig sao privados,
 ignorados pelo Git; o lockfile de providers e versionado.
 
+### Validar a entrega
+
+O roteiro completo esta em [`infra/validacao.md`](infra/validacao.md): integracao,
+persistencia apos recriar o pod Postgres, probes, Secret, requests/limits,
+segundo apply sem alteracoes e remocao dos recursos exclusivos pelo destroy.
+O documento registra as evidencias reais e as portas usadas na validacao.
+
+Em 2026-11-13, o ciclo completo passou em `mural.localtest.me:18080`:
+primeiro apply com 8 recursos, segundo apply **0 added, 0 changed, 0 destroyed**
+e destroy com 8 recursos removidos. O recado persistiu apos recriar o pod do
+Postgres, e a indisponibilidade do banco nao provocou reinicios da API.
+As portas alternativas foram usadas por uma limitacao local do encaminhamento
+na porta 80; os defaults da entrega permanecem 80/443.
+
 ---
 
 ## Descrição
