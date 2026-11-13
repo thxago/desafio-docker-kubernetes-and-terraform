@@ -1,0 +1,19 @@
+cluster_name = "mural-terraform"
+host         = "mural.localtest.me"
+http_port    = 80
+https_port   = 443
+
+# Set the password using TF_VAR_postgres_password, not a committed file.
+postgres_username = "mural"
+postgres_database = "mural"
+
+mural_values = {
+  api = {
+    replicas = 2
+  }
+  postgres = {
+    persistence = {
+      size = "1Gi"
+    }
+  }
+}

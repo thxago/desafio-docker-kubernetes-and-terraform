@@ -6,7 +6,8 @@ O Compose de desenvolvimento usa imagens oficiais e esta documentado em
 [`infra/compose.md`](infra/compose.md), incluindo a geracao de um `.env` local
 ignorado pelo Git. O codigo em `app/api/` e `app/web/` foi preservado.
 O chart Helm esta em `infra/helm/mural/`, com instrucoes em
-[`infra/helm.md`](infra/helm.md). A etapa Terraform ainda nao foi implementada.
+[`infra/helm.md`](infra/helm.md). O fluxo completo por Terraform esta em
+[`infra/terraform.md`](infra/terraform.md).
 
 ### Construir as imagens
 
@@ -104,6 +105,27 @@ com `helm --wait`. Probes HTTP distinguem `/healthz` de `/readyz`.
 
 Credenciais reais sao fornecidas por um arquivo privado ignorado pelo Git
 ou por um Secret existente, nunca pelo `values.yaml` versionado.
+
+---
+
+### Provisionar tudo com Terraform
+
+Siga [`infra/terraform.md`](infra/terraform.md) para fornecer a credencial
+local e executar, a partir de `infra/terraform/`:
+
+```powershell
+terraform init
+terraform apply
+terraform apply
+terraform destroy
+```
+
+O primeiro apply constroi/carrega as imagens, cria o kind e o namespace `mural`,
+materializa o Secret, instala Traefik e o chart e aguarda a aplicacao responder
+em **http://mural.localtest.me**. O segundo apply nao deve alterar recursos.
+O destroy remove o cluster e as imagens exclusivas desta instalacao, preservando
+caches e imagens oficiais compartilhados. State e kubeconfig sao privados,
+ignorados pelo Git; o lockfile de providers e versionado.
 
 ---
 

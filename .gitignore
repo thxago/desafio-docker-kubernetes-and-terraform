@@ -7,6 +7,12 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+!/infra/terraform/.terraform.lock.hcl
+*.tfplan
+*.tfvars
+*.tfvars.json
+!/infra/terraform/terraform.tfvars.example
+/infra/terraform/.runtime/
 solucao/terraform/.kube/
 
 # Node / misc
