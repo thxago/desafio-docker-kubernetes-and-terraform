@@ -1,0 +1,7 @@
+**
+!app/
+!app/web/
+!app/web/index.html
+!app/web/app.js
+!app/web/styles.css
+!app/web/nginx.conf.template

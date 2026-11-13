@@ -1,0 +1,19 @@
+services:
+  api:
+    image: mural-api:local
+    build:
+      context: .
+      dockerfile: app/docker/api.Dockerfile
+    command: !reset null
+    volumes: !reset []
+    healthcheck: !reset null
+
+  web:
+    image: mural-web:local
+    build:
+      context: .
+      dockerfile: app/docker/web.Dockerfile
+    volumes: !reset []
+    depends_on:
+      api:
+        condition: service_started

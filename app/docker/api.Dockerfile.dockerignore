@@ -1,0 +1,6 @@
+**
+!app/
+!app/api/
+!app/api/**
+app/api/api
+app/api/*.test

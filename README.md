@@ -1,5 +1,94 @@
 # Do compose ao cluster: Docker, Kubernetes e Terraform
 
+## Implementacao
+
+O Compose de desenvolvimento usa imagens oficiais e esta documentado em
+[`infra/compose.md`](infra/compose.md), incluindo a geracao de um `.env` local
+ignorado pelo Git. O codigo em `app/api/` e `app/web/` foi preservado.
+As etapas Helm e Terraform do enunciado abaixo ainda nao foram implementadas.
+
+### Construir as imagens
+
+Execute na raiz do repositorio, com Docker Desktop em modo Linux:
+
+```powershell
+docker build -f app\docker\api.Dockerfile -t mural-api:local .
+docker build -f app\docker\web.Dockerfile -t mural-web:local .
+```
+
+O contexto dos dois builds e a raiz (`.`). Os arquivos `.dockerignore` especificos
+de cada Dockerfile limitam o contexto aos arquivos da respectiva aplicacao,
+excluindo `.env`, `.git` e a infraestrutura. As tags `mural-api:local` e
+`mural-web:local` podem ser reutilizadas no carregamento de imagens do futuro
+cluster kind.
+
+A API usa multi-stage: compila com `CGO_ENABLED=0`, `-trimpath` e `-ldflags="-s -w"`
+e executa em `scratch` como usuario `65532:65532`. A imagem final contem somente
+o binario e os certificados CA, sem shell, compilador ou codigo-fonte.
+`DATABASE_URL` continua obrigatoria; `PORT` tem valor padrao `8080`.
+Nao ha credencial embutida na imagem.
+
+O front copia os arquivos estaticos e o template nginx existente para
+`nginx:1.27-alpine`. O entrypoint oficial processa `API_UPSTREAM` ao iniciar;
+o valor padrao e `api:8080`. A substituicao e limitada a essa variavel,
+preservando `$uri`, `$host` e demais variaveis do nginx. O front escuta em 8080.
+
+### Executar as imagens com banco e migrations
+
+Depois de criar `.env` conforme `infra/compose.md`:
+
+```powershell
+docker compose -f docker-compose.yml -f infra\docker-compose.images.yml config --quiet
+docker compose -f docker-compose.yml -f infra\docker-compose.images.yml up --build
+```
+
+Abra **http://localhost:8080**. O segundo arquivo substitui apenas a execucao da
+API e do front: usa as imagens construidas, remove os bind mounts e o `go run`.
+Banco, credenciais, persistencia e migrations continuam configurados pelo
+Compose. Nao execute as duas variantes simultaneamente com o mesmo
+projeto/porta.
+
+Como `scratch` nao contem `wget` nem shell, o healthcheck interno da API e
+removido nessa variante. O front aguarda o processo da API iniciar; banco e
+migrations ja foram aguardados pela API. A prontidao pode ser consultada
+externamente, sem adicionar ferramentas a imagem minima:
+
+```powershell
+docker compose -f docker-compose.yml -f infra\docker-compose.images.yml exec web wget -q -O - http://api:8080/healthz
+docker compose -f docker-compose.yml -f infra\docker-compose.images.yml exec web wget -q -O - http://api:8080/readyz
+docker compose -f docker-compose.yml -f infra\docker-compose.images.yml down
+```
+
+O `down` preserva o volume do banco. No Kubernetes, as probes HTTP serao
+executadas pelo kubelet, sem depender de ferramentas dentro da API.
+
+### Tamanho antes e depois
+
+Medicao real em **2026-11-13**, Docker Desktop 4.47.0 / Engine 28.4.0,
+plataforma **linux/amd64**. A referencia anterior e a imagem oficial usada
+para executar `go run`; o codigo-fonte ali e montado como volume,
+nao faz parte da imagem.
+
+| Imagem | `docker image ls` | `docker image inspect .Size` (bytes) |
+|---|---:|---:|
+| `golang:1.23-alpine` (antes) | 370 MB | 78.165.804 |
+| `mural-api:local` (depois) | 13,1 MB | 3.506.616 |
+| `mural-web:local` | 73,6 MB | 20.980.836 |
+
+Os comandos abaixo reproduzem as medicoes. Neste image store do Docker Desktop,
+o tamanho exibido na listagem difere do campo `.Size` da inspecao; compare sempre
+valores da mesma coluna. Pela listagem, a API ficou aproximadamente **96,5% menor**.
+Novos builds, plataformas e atualizacoes das tags oficiais podem alterar os valores.
+
+```powershell
+docker image ls golang:1.23-alpine
+docker image ls mural-api:local
+docker image ls mural-web:local
+docker image inspect golang:1.23-alpine mural-api:local mural-web:local --format '{{.RepoTags}} {{.Size}}'
+```
+
+---
+
 ## Descrição
 
 Neste desafio você vai pegar uma aplicação **que já funciona** e levá-la de um
