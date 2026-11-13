@@ -26,3 +26,4 @@ node_modules/
 .env.*
 !.env.example
 /infra/helm-values.private.json
+/infra/.evidence/

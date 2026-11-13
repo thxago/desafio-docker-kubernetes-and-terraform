@@ -20,7 +20,9 @@ metadata:
   labels:
     {{- include "mural.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.api.autoscaling.enabled }}
   replicas: {{ .Values.api.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "mural.selectorLabels" . | nindent 6 }}

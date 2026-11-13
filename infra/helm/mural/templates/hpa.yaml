@@ -1,0 +1,31 @@
+{{- if .Values.api.autoscaling.enabled }}
+{{- if or (lt (int .Values.api.autoscaling.minReplicas) 1) (lt (int .Values.api.autoscaling.maxReplicas) (int .Values.api.autoscaling.minReplicas)) }}
+{{- fail "API autoscaling requires 1 <= minReplicas <= maxReplicas" }}
+{{- end }}
+{{- if or (lt (int .Values.api.autoscaling.targetCPUUtilizationPercentage) 1) (gt (int .Values.api.autoscaling.targetCPUUtilizationPercentage) 100) }}
+{{- fail "API autoscaling target CPU utilization must be between 1 and 100" }}
+{{- end }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mural.fullname" . }}-api
+  labels:
+    {{- include "mural.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mural.fullname" . }}-api
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.api.autoscaling.scaleDownStabilizationSeconds }}
+{{- end }}

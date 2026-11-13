@@ -93,3 +93,19 @@ variable "mural_values" {
   type        = any
   default     = {}
 }
+
+variable "enable_autoscaling" {
+  description = "Install metrics-server and enable the API HPA in this local kind cluster."
+  type        = bool
+  default     = false
+}
+
+variable "metrics_server_chart_version" {
+  type    = string
+  default = "3.13.0"
+}
+
+variable "metrics_server_image_tag" {
+  type    = string
+  default = "v0.8.0"
+}

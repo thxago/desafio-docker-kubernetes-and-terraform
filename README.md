@@ -137,6 +137,25 @@ Dockerfiles em `app/docker/`, chart em `infra/helm/mural/` e maestro em
 - [Helm manual no kind](infra/helm.md): instalação, upgrades, probes e persistência.
 - [Terraform detalhado](infra/terraform.md): entradas, credenciais, limpeza e limitações.
 - [Validação ponta a ponta](infra/validacao.md): comandos e evidências sem segredos.
+- [Bônus: HPA, carga e atalhos](infra/bonus.md): metrics-server opcional, k6 e automação PowerShell.
 
-O núcleo obrigatório está implementado. HPA, carga e atalhos de automação são
-bônus opcionais e não fazem parte desta entrega.
+## Bônus opcionais
+
+Habilite `enable_autoscaling = true` conforme [o guia de bônus](infra/bonus.md)
+para provisionar metrics-server e o HPA da API pelo mesmo Terraform. O padrão
+continua sendo o fluxo obrigatório com réplicas fixas.
+
+Com a credencial e os tfvars privados já configurados, na raiz:
+
+```powershell
+pwsh -NoProfile -File .\infra\mural.ps1 up
+pwsh -NoProfile -File .\infra\mural.ps1 load
+pwsh -NoProfile -File .\infra\mural.ps1 down
+```
+
+Os atalhos não substituem o maestro; `load` exige k6 e kubectl, testa `/api/messages`
+e registra amostras de réplicas Ready. A escala em um único node local é ilustrativa.
+
+Na validação real, a API escalou de **2 para 5 réplicas Ready** com 40 usuários
+virtuais durante 180 segundos, sem falhas HTTP. O segundo `up` não alterou recursos
+e `down` removeu os 9 recursos do ambiente com bônus.

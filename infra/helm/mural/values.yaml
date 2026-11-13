@@ -3,6 +3,12 @@ fullnameOverride: ""
 
 api:
   replicas: 2
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+    scaleDownStabilizationSeconds: 60
   image:
     repository: mural-api
     tag: local

@@ -12,6 +12,7 @@ locals {
   web_image  = "${var.cluster_name}-web:tf-${substr(local.web_hash, 0, 12)}"
   postgres   = "${var.postgres_image.repository}:${var.postgres_image.tag}"
   traefik    = "traefik:${var.traefik_image_tag}"
+  metrics    = var.enable_autoscaling ? "registry.k8s.io/metrics-server/metrics-server:${var.metrics_server_image_tag}" : null
   url        = "http://${var.host}${var.http_port == 80 ? "" : ":${var.http_port}"}"
   image_config = {
     root       = local.root
@@ -22,6 +23,7 @@ locals {
     postgres   = local.postgres
     traefik    = local.traefik
     node       = var.node_image
+    metrics    = local.metrics
     kubeconfig = local.kubeconfig
   }
 }
@@ -30,7 +32,7 @@ resource "terraform_data" "images" {
   input = local.image_config
   triggers_replace = [
     local.api_hash, local.web_hash, var.platform, var.node_image,
-    local.postgres, local.traefik, var.cluster_name, filesha256(local.script)
+    local.postgres, local.traefik, local.metrics, var.cluster_name, filesha256(local.script)
   ]
 
   provisioner "local-exec" {
@@ -149,7 +151,8 @@ resource "helm_release" "mural" {
     yamlencode({
       fullnameOverride = "mural"
       api = {
-        image = { repository = "${var.cluster_name}-api", tag = "tf-${substr(local.api_hash, 0, 12)}", pullPolicy = "IfNotPresent" }
+        image       = { repository = "${var.cluster_name}-api", tag = "tf-${substr(local.api_hash, 0, 12)}", pullPolicy = "IfNotPresent" }
+        autoscaling = { enabled = var.enable_autoscaling }
       }
       web = {
         image = { repository = "${var.cluster_name}-web", tag = "tf-${substr(local.web_hash, 0, 12)}", pullPolicy = "IfNotPresent" }
@@ -167,6 +170,29 @@ resource "helm_release" "mural" {
         host      = var.host
       }
       terraform = { chartDigest = local.chart_hash }
+    })
+  ]
+  depends_on = [helm_release.traefik, helm_release.metrics_server, terraform_data.loaded_images]
+}
+
+resource "helm_release" "metrics_server" {
+  count            = var.enable_autoscaling ? 1 : 0
+  name             = "metrics-server"
+  namespace        = "metrics-server"
+  create_namespace = true
+  repository       = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart            = "metrics-server"
+  version          = var.metrics_server_chart_version
+  wait             = true
+  timeout          = 600
+  values = [
+    yamlencode({
+      image = { tag = var.metrics_server_image_tag }
+      args  = ["--kubelet-insecure-tls"]
+      resources = {
+        requests = { cpu = "100m", memory = "128Mi" }
+        limits   = { cpu = "300m", memory = "256Mi" }
+      }
     })
   ]
   depends_on = [helm_release.traefik, terraform_data.loaded_images]

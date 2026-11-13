@@ -77,7 +77,8 @@ parametrizaveis; mantenha `traefik_chart_version` e `traefik_image_tag` compativ
 O carregamento exporta um arquivo temporario de plataforma unica, importa-o
 via `kind load image-archive` e remove-o em `finally`. Isso evita os blobs
 multiarch ausentes do Docker Desktop e downloads dentro do node, inclusive
-em redes com certificados corporativos. Nenhuma verificacao TLS e desabilitada.
+em redes com certificados corporativos. Nenhuma verificacao TLS de downloads e desabilitada. A configuracao opcional
+de metrics-server para o kubelet local esta explicada em `bonus.md`.
 
 O cluster usa label `ingress-ready=true`, NodePorts 30080/30443 e mapeamento
 para as portas locais configuradas. O kubeconfig fica dedicado em
@@ -138,6 +139,14 @@ Para validar integracao, persistencia, probes e idempotencia com verificacoes
 reproduziveis, siga [`validacao.md`](validacao.md). Se o encaminhamento local
 na porta 80 falhar mesmo com o NodePort interno saudavel, o roteiro permite
 usar 18080/18443 no arquivo privado antes de iniciar um novo ciclo.
+
+## Bonus opcionais
+
+`enable_autoscaling = true` adiciona metrics-server ao provisionamento e habilita
+o HPA do chart, com parametros em `mural_values.api.autoscaling`. O padrao e
+false, sem alterar o fluxo obrigatorio. A imagem de metricas tambem e carregada
+no kind antes do deploy; versoes de imagem/chart sao variaveis explicitas.
+Veja [`bonus.md`](bonus.md) para os atalhos PowerShell, k6 e as evidencias de escala.
 
 ## Evidencia do ciclo
 

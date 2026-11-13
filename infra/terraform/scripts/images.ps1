@@ -40,7 +40,11 @@ if ($Action -eq 'Build') {
             '--tag', $image, $config.root
         )
     }
-    foreach ($image in @($config.postgres, $config.traefik, $config.node)) {
+    $dependencies = @($config.postgres, $config.traefik, $config.node)
+    if ($config.metrics) {
+        $dependencies += $config.metrics
+    }
+    foreach ($image in $dependencies) {
         Invoke-Native docker @('pull', '--quiet', '--platform', $config.platform, $image)
     }
 }
@@ -48,10 +52,13 @@ if ($Action -eq 'Build') {
 if ($Action -eq 'Load') {
     $archive = Join-Path ([IO.Path]::GetTempPath()) "mural-$($config.cluster)-$([guid]::NewGuid()).tar"
     try {
-        Invoke-Native docker @(
-            'image', 'save', '--platform', $config.platform, '--output', $archive,
-            $config.api, $config.web, $config.postgres, $config.traefik
-        )
+        $images = @($config.api, $config.web, $config.postgres, $config.traefik)
+        if ($config.metrics) {
+            $images += $config.metrics
+        }
+        Invoke-Native docker (@(
+            'image', 'save', '--platform', $config.platform, '--output', $archive
+        ) + $images)
         Invoke-Native kind @('load', 'image-archive', $archive, '--name', $config.cluster)
     } finally {
         if (Test-Path -LiteralPath $archive) {
